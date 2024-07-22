@@ -5,8 +5,6 @@ import java.io.StringReader;
 import java.util.HashSet;
 import java.util.Set;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.xmlpull.v1.XmlPullParser;
 import org.xmlpull.v1.XmlPullParserFactory;
 
@@ -16,9 +14,14 @@ import jadx.api.JavaClass;
 import jadx.api.ResourceFile;
 
 public class JadxUtils {
-    private static final Logger logger = LoggerFactory.getLogger(JadxUtils.class);
 
-    public static JadxDecompiler loadJadx(String apkFilePath) {
+    private SimpleLogger logger;
+
+    public JadxUtils(SimpleLogger logger) {
+        this.logger = logger;
+    }
+
+    public JadxDecompiler loadJadx(String apkFilePath) {
         File apkFile = new File(apkFilePath);
         File outputDir = new File(apkFile.getParent(), "output_temp");
 
@@ -35,13 +38,13 @@ public class JadxUtils {
             jadx.load();
             //jadx.save();
         } catch (Exception e) {
-            logger.error("Error loading APK", e);
+            logger.error("Error loading APK" + e.getMessage());
         }
 
         return jadx;
     }
 
-    public static JavaClass getJavaClassByName(JadxDecompiler jadx, String className) {
+    public JavaClass getJavaClassByName(JadxDecompiler jadx, String className) {
         for (JavaClass javaClass : jadx.getClasses()) {
             if (javaClass.getFullName().equals(className)) {
                 return javaClass;
@@ -50,23 +53,24 @@ public class JadxUtils {
         return null; // Class not found
     }
 
-    public static JavaClass findApplicationSubclass(JadxDecompiler jadx) {
+    public static JavaClass findApplicationSubclass(JadxDecompiler jadx, SimpleLogger logger, AnalysisResult result) {
         for (JavaClass javaClass : jadx.getClasses()) {
             if (javaClass.getClassNode().getSuperClass().toString().equals("android.app.Application")) {
-                logger.info("Found Application subclass: {}", javaClass.getFullName());
+                logger.log("Found Application subclass: " + javaClass.getFullName());
+                result.applicationSubclassPackageName = javaClass.getPackage();
                 return javaClass;
             }
         }
         return null;
     }
 
-    public static Set<String> getManifestClasses(String apkFilePath, JadxDecompiler jadx) throws Exception {
+    public Set<String> getManifestClasses(String apkFilePath, JadxDecompiler jadx) throws Exception {
         Set<String> classNames = new HashSet<>();
 
         String manifestContent = "";
         for (ResourceFile resource : jadx.getResources()) {
             if (resource.getOriginalName().equals("AndroidManifest.xml")) {
-                logger.info("Found AndroidManifest.xml");
+                //logger.info("Found AndroidManifest.xml");
                 manifestContent = resource.loadContent().getText().getCodeStr();
                 break;
             }
@@ -86,7 +90,7 @@ public class JadxUtils {
                         for (int i = 0; i < parser.getAttributeCount(); i++) {
                             if ("android:name".equals(parser.getAttributeName(i))) {
                                 String className = parser.getAttributeValue(i);
-                                logger.info("Manifest class found: {}", className);
+                                //logger.info("Manifest class found: {}", className);
                                 classNames.add(className.replace(".", "/") + ".class");
                             }
                         }
@@ -99,11 +103,11 @@ public class JadxUtils {
         return classNames;
     }
 
-    public static Set<String> getDexClasses(String apkFilePath, JadxDecompiler jadx) throws Exception {
+    public Set<String> getDexClasses(String apkFilePath, JadxDecompiler jadx) throws Exception {
         Set<String> classNames = new HashSet<>();
 
         for (JavaClass cls : jadx.getClasses()) {
-            logger.info("Dex class found: {}", cls.getFullName());
+            //logger.info("Dex class found: {}", cls.getFullName());
             classNames.add(cls.getRawName().replace('.', '/') + ".class");
         }
 

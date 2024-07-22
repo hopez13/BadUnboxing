@@ -9,4 +9,10 @@
     <root level="INFO">
         <appender-ref ref="STDOUT" />
     </root>
+
+    <logger name="jadx.core" level="OFF"/>
+    <logger name="jadx.api" level="OFF"/>
+    <logger name="com.lauriewired.analyzer.IdentifierRenamer" level="OFF" />
+    <logger name="com.lauriewired.analyzer.DynamicDexLoaderDetection" level="OFF" />
+    
 </configuration>

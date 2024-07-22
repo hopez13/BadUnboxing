@@ -7,9 +7,6 @@ import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import jadx.api.JadxDecompiler;
 import jadx.api.JavaClass;
 import jadx.api.JavaField;
@@ -17,7 +14,6 @@ import jadx.api.JavaMethod;
 import jadx.core.dex.nodes.FieldNode;
 
 public class IdentifierRenamer {
-    private static final Logger logger = LoggerFactory.getLogger(IdentifierRenamer.class);
     private static final int POSTFIX_LENGTH = 8;
     private static final String CHARACTERS = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
     private static final Random RANDOM = new Random();
@@ -74,7 +70,7 @@ public class IdentifierRenamer {
                     if (!argName.startsWith("var_") && !argName.startsWith("method_")) {
                         String uniqueArgName = generateUniqueName(existingNames, argName, "arg_");
 
-                        logger.info("Renaming method argument {} to {}", argName, uniqueArgName);
+                        //logger.info("Renaming method argument {} to {}", argName, uniqueArgName);
 
                         // Replace all references to this argument within the method body
                         modifiedMethodBody = modifiedMethodBody.replaceAll("\\b" + argName + "\\b", uniqueArgName);
@@ -133,7 +129,7 @@ public class IdentifierRenamer {
                         modifiedMethodBody = replaceVariableNames(modifiedMethodBody, varName, uniqueVarName);
                     }
 
-                    logger.info("Renaming local variable {} to {}", varName, uniqueVarName);
+                    //logger.info("Renaming local variable {} to {}", varName, uniqueVarName);
                 }
             }
 
@@ -202,7 +198,7 @@ public class IdentifierRenamer {
                 !method.getName().equals("onCreate") && !method.getName().equals("<init>")) {
                     
                 String uniqueMethodName = generateUniqueName(existingNames, method.getName(), "method_");
-                logger.info("Renaming method {} to {}", method.getName(), uniqueMethodName);
+                //logger.info("Renaming method {} to {}", method.getName(), uniqueMethodName);
                 method.getMethodNode().rename(uniqueMethodName);
             }
         }
@@ -213,7 +209,7 @@ public class IdentifierRenamer {
             FieldNode fieldNode = field.getFieldNode();
             if (!field.getName().startsWith("method_") && !field.getName().startsWith("field_")) {
                 String uniqueFieldName = generateUniqueName(existingNames, field.getName(), "field_");
-                logger.info("Renaming field {} to {}", field.getName(), uniqueFieldName);
+                //logger.info("Renaming field {} to {}", field.getName(), uniqueFieldName);
                 fieldNode.rename(uniqueFieldName);
             }
         }

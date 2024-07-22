@@ -6,32 +6,39 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import jadx.api.JadxDecompiler;
 import jadx.api.JavaClass;
 
 public class DynamicDexLoaderDetection  {
-    private static final Logger logger = LoggerFactory.getLogger(DynamicDexLoaderDetection.class);
-
     private static final Set<String> dynamicDexLoadingKeywords = new HashSet<>(Arrays.asList(
         "DexClassLoader", "PathClassLoader", "InMemoryDexClassLoader", "BaseDexClassLoader", "loadDex", "OpenMemory"
     ));
 
-    public static List<String> getJavaDexLoadingDetails(JadxDecompiler jadx) {
-        List<String> details = new ArrayList<>();
+    private SimpleLogger logger;
+    private AnalysisResult result;
+
+    public DynamicDexLoaderDetection(SimpleLogger logger, AnalysisResult result) {
+        this.logger = logger;
+        this.result = result;
+    }
+
+    public List<String> getDclPackages(JadxDecompiler jadx) {
+        HashSet<String> packageNames = new HashSet<>();
         for (JavaClass cls : jadx.getClasses()) {
             String classCode = cls.getCode();
             for (String keyword : dynamicDexLoadingKeywords) {
                 if (classCode.contains(keyword)) {
-                    String detail = String.format("Found keyword '%s' in class '%s'", keyword, cls.getFullName());
-                    logger.info(detail);
-                    details.add(detail);
+                    String detail = String.format("Found dcl keyword '%s' in class '%s'", keyword, cls.getFullName());
+                    logger.log(detail);
+                    if (cls.getPackage().startsWith(result.packageName) || cls.getPackage().startsWith(result.applicationSubclassPackageName)) {
+                        result.dclInApp = true;
+                    }
+                    result.usesDcl = true;
+                    packageNames.add(cls.getPackage());
                 }
             }
         }
-        return details;
+        return packageNames.stream().sorted().toList();
     }
 
     public static boolean hasNativeDexLoading() {

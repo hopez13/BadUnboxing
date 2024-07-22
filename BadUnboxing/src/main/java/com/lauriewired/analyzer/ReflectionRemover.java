@@ -1,22 +1,22 @@
 package com.lauriewired.analyzer;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.Stack;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import jadx.api.JadxDecompiler;
+import jadx.api.JavaClass;
 
 public class ReflectionRemover {
-    private static final Logger logger = LoggerFactory.getLogger(ReflectionRemover.class);
-
     private static Stack<String> reflectiveValues = new Stack<>();
     private static final Set<String> analyzedValues = new HashSet<>();
 
-    private static final Set<String> reflectiveKeywords = new HashSet<>(Arrays.asList(
+    public static final Set<String> reflectiveKeywords = new HashSet<>(Arrays.asList(
         "getMethod",
         "invoke",
         "getDeclaredField",
@@ -27,42 +27,23 @@ public class ReflectionRemover {
         "newInstance"
     ));
 
-    public static void removeReflection(StringBuilder javaCode) {
+    private SimpleLogger logger;
+    private AnalysisResult result;
 
-        //System.out.println(javaCode);
-        
-        //commentOutMethodUsingReflection(javaCode, surroundWithRegex("forName"));
+    public ReflectionRemover(SimpleLogger logger, AnalysisResult result) {
+        this.logger = logger;
+        this.result = result;
+    }
 
-        /*
-        commentOutLineUsingReflection(javaCode, surroundWithRegex("getDeclaredField"));
-
-        for (String method : reflectiveValues) {
-            System.out.println(method);
-        }
-
-        
-        //commentOutMethodUsingReflection(javaCode, "[\\s\\.\\(]it[\\s\\.\\);]");
-        //commentOutLineUsingReflection(javaCode, "[\\s\\.\\(]it[\\s\\.\\);]");
-
-        //commentOutMethodUsingReflection(javaCode, "Class.forName");
-        //commentOutLineUsingReflection(javaCode, "Class.forName");
-        
-
-        for (String method : reflectiveValues) {
-            System.out.println(method);
-        }*/
-
-        //commentOutLineUsingReflection(javaCode, surroundWithRegex("NJdYmOqBdAmAiWnWkAzIiKhNbFqSfAkTtXyRwCmMbCfNqClHu"));
-        //commentOutLineUsingReflection(javaCode, surroundWithRegex("bwyY_354421"));
-
-        
-        
+    public void removeReflection(StringBuilder javaCode) {       
         // Initial comment out of reflection
         for (String keyword : reflectiveKeywords) {
             commentOutMethodUsingReflection(javaCode, surroundWithRegex(keyword));
+            result.usesReflection = true;
         }
         for (String keyword : reflectiveKeywords) {
             commentOutLineUsingReflection(javaCode, surroundWithRegex(keyword));
+            result.usesReflection = true;
         }
 
         // Add while loop here to keep iterating through reflectiveMethods and reflectiveVariables while they have values
@@ -76,11 +57,30 @@ public class ReflectionRemover {
         }
     }
 
-    private static String surroundWithRegex(String value) {
+    public static List<String> getReflectivePackages(JadxDecompiler jadx, SimpleLogger logger, AnalysisResult result) {
+        HashSet<String> packageNames = new HashSet<>();
+        for (JavaClass cls : jadx.getClasses()) {
+            String classCode = cls.getCode();
+            for (String keyword : reflectiveKeywords) {
+                if (classCode.contains(keyword)) {
+                    String detail = String.format("Found reflective keyword '%s' in class '%s'", keyword, cls.getFullName());
+                    logger.log(detail);
+                    if (cls.getPackage().startsWith(result.packageName) || cls.getPackage().startsWith(result.applicationSubclassPackageName)) {
+                        result.reflectionInApp = true;
+                    }
+                    result.usesReflection = true;
+                    packageNames.add(cls.getPackage());
+                }
+            }
+        }
+        return packageNames.stream().sorted().toList();
+    }
+
+    private String surroundWithRegex(String value) {
         return "[\\[\\]\\s\\.\\(\\)]" + value + "[\\[\\]\\s\\.\\(\\),;]";
     }
 
-    public static void commentOutLineUsingReflection(StringBuilder javaCode, String keywordRegex) {
+    private void commentOutLineUsingReflection(StringBuilder javaCode, String keywordRegex) {
         // Compile the keyword as a regex pattern
         Pattern keywordPattern = Pattern.compile(keywordRegex);
 
@@ -106,7 +106,7 @@ public class ReflectionRemover {
                         String variableName = matcher.group(1);
                         reflectiveValues.push(variableName);
 
-                        logger.info("Found reflective variable: " + variableName);
+                        logger.log("Found reflective variable: " + variableName);
                     }
                 }
                 // Comment out the line if it contains the keyword and is not already commented out
@@ -114,7 +114,7 @@ public class ReflectionRemover {
 
                 // Don't be too noisy so print up to the first 30 chars of the line
                 String logLine = line.replaceFirst("^\\s+", "");
-                logger.info("Commented out reflective line starting with: " + logLine.substring(0, Math.min(logLine.length(), 30)));
+                logger.log("Commented out reflective line starting with: " + logLine);
 
                 // If the line ends with an opening brace, add "if (true) {"
                 if (line.trim().endsWith("{")) {
@@ -131,7 +131,7 @@ public class ReflectionRemover {
     }
 
     // omg it works. never change this
-    public static void commentOutMethodUsingReflection(StringBuilder javaCode, String keywordRegex) {
+    private void commentOutMethodUsingReflection(StringBuilder javaCode, String keywordRegex) {
         // Compile the keyword as a regex pattern
         Pattern keywordPattern = Pattern.compile(keywordRegex);
 
@@ -158,7 +158,7 @@ public class ReflectionRemover {
                 if (returnContainsReflection) {
                     commentOutMethod(currentMethod, modifiedCode);
                     reflectiveValues.push(currentMethodName);
-                    logger.info("Removing reflective method: " + currentMethodName);
+                    logger.log("Removing reflective method: " + currentMethodName);
                 } else {
                     modifiedCode.append(currentMethod).append("\n");
                 }
