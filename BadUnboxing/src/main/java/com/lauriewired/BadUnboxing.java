@@ -3,6 +3,7 @@ package com.lauriewired;
 import com.lauriewired.analyzer.Analyzer;
 
 import java.io.File;
+import java.nio.file.Files;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -48,13 +49,18 @@ public class BadUnboxing {
         System.out.print("\r" + progressBar.toString());
     }
 
+    private static boolean endsWithAnySuffix(String str, List<String> suffixes) {
+        return suffixes.stream().anyMatch(str::endsWith);
+    }
+
     public static void main(String[] args) {
-        if (args.length != 2) {
-            System.err.println("usage: java -jar BadUnboxing.jar /path/to/apks /output/path");
+        if (args.length != 2 && args.length != 3) {
+            System.err.println("usage: java -jar BadUnboxing.jar /path/to/apks /output/path [/path/to/blacklist]");
             System.exit(1);
         }
         String apkFilePath = args[0];
         String outputContainer = args[1];
+        String blacklistPath = args[2];
 
         if (!new File(apkFilePath).isDirectory()) {
             System.err.println(
@@ -67,6 +73,24 @@ public class BadUnboxing {
             System.err.println("no apk files found in given directory");
             System.exit(1);
         }
+
+        var blacklistFile = new File(blacklistPath);
+        if (!blacklistFile.isFile()) {
+            System.err.println("no blacklist file found at " + blacklistPath);
+            System.exit(1);
+        }
+        try {
+            List<String> blacklist =  Files.readAllLines(blacklistFile.toPath()).stream().map(line -> line.substring(0, line.length() - 3) + "apk").toList();
+            System.out.println(blacklist.size() + " blacklist size");
+            apkFiles = apkFiles.stream().filter(apk -> !endsWithAnySuffix(apk, blacklist)).toList();
+            System.out.println(blacklist.get(0));
+            System.out.println(apkFiles.get(0));
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+
+
         int totalTasks = apkFiles.size();
         System.out.println("Found " + totalTasks + " apk files");
 
