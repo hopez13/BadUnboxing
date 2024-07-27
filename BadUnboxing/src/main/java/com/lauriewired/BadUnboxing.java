@@ -5,10 +5,15 @@ import com.lauriewired.analyzer.Analyzer;
 import java.io.File;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
@@ -75,31 +80,29 @@ public class BadUnboxing {
         new File(outputRootPath + "/logs/").mkdirs();
 
         ExecutorService executorService = Executors.newFixedThreadPool(MAX_THREADS);
+        List<Future<?>> futures = new ArrayList<>();
         AtomicInteger completedTasks = new AtomicInteger(0);
 
         for (String apkPath : apkFiles) {
-            executorService.submit(() -> {
+            Future<?> future = executorService.submit(() -> {
                 Analyzer analyzer = new Analyzer(apkPath, outputRootPath);
                 analyzer.run();
                 completedTasks.incrementAndGet();
             });
+            futures.add(future);
         }
 
-        Thread progressBarThread = new Thread(() -> {
-            while (!executorService.isTerminated()) {
-                int completed = completedTasks.get();
-                printProgressBar(completed, totalTasks);
-                try {
-                    Thread.sleep(500); // Update every 500ms
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                }
+        for (Future<?> future : futures) {
+            try {
+                future.get(10, TimeUnit.MINUTES);
+            } catch (TimeoutException e) {
+                future.cancel(true);
+                System.out.println("Task exceeded " + 10 + " minutes and was terminated.");
+            } catch (InterruptedException | ExecutionException e) {
+                e.printStackTrace();
             }
-            // Ensure the final state of the progress bar is printed
-            printProgressBar(totalTasks, totalTasks);
-            System.out.println("SUCCESS!");
-        });
-        progressBarThread.start();
+        }
+
 
         executorService.shutdown();
 
