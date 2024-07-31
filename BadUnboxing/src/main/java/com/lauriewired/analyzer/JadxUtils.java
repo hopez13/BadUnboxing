@@ -55,7 +55,9 @@ public class JadxUtils {
 
     public static JavaClass findApplicationSubclass(JadxDecompiler jadx, SimpleLogger logger, AnalysisResult result) {
         for (JavaClass javaClass : jadx.getClasses()) {
-            if (javaClass.getClassNode().getSuperClass().toString().equals("android.app.Application")) {
+            var superClass = javaClass.getClassNode().getSuperClass();
+            if (superClass == null) continue;
+            if (superClass.toString().equals("android.app.Application")) {
                 logger.log("Found Application subclass: " + javaClass.getFullName());
                 result.applicationSubclassPackageName = javaClass.getPackage();
                 return javaClass;
