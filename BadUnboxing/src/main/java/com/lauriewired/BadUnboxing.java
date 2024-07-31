@@ -19,7 +19,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 public class BadUnboxing {
-    private static final int MAX_THREADS = 20;
+    private static final int MAX_THREADS = 3;
 
     private static List<String> findApkFiles(File folder) {
         File[] files = folder.listFiles((dir, name) -> name.toLowerCase().endsWith(".apk"));
@@ -80,9 +80,9 @@ public class BadUnboxing {
             System.exit(1);
         }
         try {
-            List<String> blacklist =  Files.readAllLines(blacklistFile.toPath()).stream().map(line -> line.substring(0, line.length() - 3) + "apk").toList();
+            List<String> blacklist =  Files.readAllLines(blacklistFile.toPath()).stream().map(line -> apkFilePath + line.substring(0, line.length() - 3) + "apk").toList();
             System.out.println(blacklist.size() + " blacklist size");
-            apkFiles = apkFiles.stream().filter(apk -> !endsWithAnySuffix(apk, blacklist)).toList();
+            apkFiles = apkFiles.stream().filter(apk -> !blacklist.contains(apk)).toList();
             System.out.println(blacklist.get(0));
             System.out.println(apkFiles.get(0));
         } catch (Exception e) {
@@ -123,6 +123,8 @@ public class BadUnboxing {
                 future.cancel(true);
                 System.out.println("Task exceeded " + 10 + " minutes and was terminated.");
             } catch (InterruptedException | ExecutionException e) {
+                //e.printStackTrace();
+            } catch (Exception e) {
                 e.printStackTrace();
             }
         }
