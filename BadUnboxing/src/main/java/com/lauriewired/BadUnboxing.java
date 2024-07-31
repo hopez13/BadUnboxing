@@ -9,13 +9,11 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 public class BadUnboxing {
@@ -24,33 +22,6 @@ public class BadUnboxing {
     private static List<String> findApkFiles(File folder) {
         File[] files = folder.listFiles((dir, name) -> name.toLowerCase().endsWith(".apk"));
         return Arrays.stream(files).map(File::getAbsolutePath).collect(Collectors.toList());
-    }
-
-    private static void printProgressBar(int completed, int total) {
-        int barLength = 50;
-        int progress = (int) ((double) completed / total * barLength);
-        StringBuilder progressBar = new StringBuilder("[");
-        for (int i = 0; i < barLength; i++) {
-            if (i < progress) {
-                progressBar.append("=");
-            } else {
-                progressBar.append(" ");
-            }
-        }
-        progressBar.append("] ")
-                .append(completed)
-                .append("/")
-                .append(total)
-                .append(" (")
-                .append(String.format("%.2f", (double) completed / total * 100))
-                .append("%)");
-
-        // Print progress bar
-        System.out.print("\r" + progressBar.toString());
-    }
-
-    private static boolean endsWithAnySuffix(String str, List<String> suffixes) {
-        return suffixes.stream().anyMatch(str::endsWith);
     }
 
     public static void main(String[] args) {
@@ -105,13 +76,11 @@ public class BadUnboxing {
 
         ExecutorService executorService = Executors.newFixedThreadPool(MAX_THREADS);
         List<Future<?>> futures = new ArrayList<>();
-        AtomicInteger completedTasks = new AtomicInteger(0);
 
         for (String apkPath : apkFiles) {
             Future<?> future = executorService.submit(() -> {
                 Analyzer analyzer = new Analyzer(apkPath, outputRootPath);
                 analyzer.run();
-                completedTasks.incrementAndGet();
             });
             futures.add(future);
         }
@@ -122,8 +91,6 @@ public class BadUnboxing {
             } catch (TimeoutException e) {
                 future.cancel(true);
                 System.out.println("Task exceeded " + 10 + " minutes and was terminated.");
-            } catch (InterruptedException | ExecutionException e) {
-                //e.printStackTrace();
             } catch (Exception e) {
                 e.printStackTrace();
             }
