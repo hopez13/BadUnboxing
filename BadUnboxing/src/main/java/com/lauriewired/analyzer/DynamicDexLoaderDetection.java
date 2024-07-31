@@ -1,6 +1,5 @@
 package com.lauriewired.analyzer;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
@@ -25,16 +24,24 @@ public class DynamicDexLoaderDetection  {
     public List<String> getDclPackages(JadxDecompiler jadx) {
         HashSet<String> packageNames = new HashSet<>();
         for (JavaClass cls : jadx.getClasses()) {
+            String pkgName = cls.getPackage();
+            if (pkgName == null || pkgName.isEmpty()) {
+                continue;
+            }
             String classCode = cls.getCode();
             for (String keyword : dynamicDexLoadingKeywords) {
                 if (classCode.contains(keyword)) {
                     String detail = String.format("Found dcl keyword '%s' in class '%s'", keyword, cls.getFullName());
                     logger.log(detail);
-                    if (cls.getPackage().startsWith(result.packageName) || cls.getPackage().startsWith(result.applicationSubclassPackageName)) {
+                    
+                    if (pkgName.startsWith(result.packageName)) {
+                        result.dclInApp = true;
+                    }
+                    if (result.applicationSubclassPackageName != null && pkgName.startsWith(result.applicationSubclassPackageName)) {
                         result.dclInApp = true;
                     }
                     result.usesDcl = true;
-                    packageNames.add(cls.getPackage());
+                    packageNames.add(pkgName);
                 }
             }
         }

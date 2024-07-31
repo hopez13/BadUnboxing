@@ -60,12 +60,19 @@ public class ReflectionRemover {
     public static List<String> getReflectivePackages(JadxDecompiler jadx, SimpleLogger logger, AnalysisResult result) {
         HashSet<String> packageNames = new HashSet<>();
         for (JavaClass cls : jadx.getClasses()) {
+            String pkgName = cls.getPackage();
+            if (pkgName == null || pkgName.isEmpty()) {
+                continue;
+            }
             String classCode = cls.getCode();
             for (String keyword : reflectiveKeywords) {
                 if (classCode.contains(keyword)) {
                     String detail = String.format("Found reflective keyword '%s' in class '%s'", keyword, cls.getFullName());
                     logger.log(detail);
-                    if (cls.getPackage().startsWith(result.packageName) || cls.getPackage().startsWith(result.applicationSubclassPackageName)) {
+                    if (pkgName.startsWith(result.packageName)) {
+                        result.reflectionInApp = true;
+                    }
+                    if (result.applicationSubclassPackageName != null && cls.getPackage().startsWith(result.applicationSubclassPackageName)) {
                         result.reflectionInApp = true;
                     }
                     result.usesReflection = true;
