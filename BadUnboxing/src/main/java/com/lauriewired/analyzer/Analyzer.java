@@ -67,6 +67,9 @@ public class Analyzer implements Runnable {
         JadxUtils jadxUtils = new JadxUtils(logger);
         JadxDecompiler jadx = jadxUtils.loadJadx(apkFilePath);
         String packageName = jadx.getRoot().getAppPackage();
+        if (packageName == null) {
+            packageName = apkFileName;
+        }
         
         logger.log("Loading APK:" + packageName);
         AnalysisResult result = new AnalysisResult(packageName);
